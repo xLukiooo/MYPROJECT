@@ -1,0 +1,3 @@
+# Ignorowanie pliku z wrażliwymi danymi
+.env
+
