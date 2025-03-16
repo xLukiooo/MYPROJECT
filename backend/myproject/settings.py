@@ -18,20 +18,21 @@ import environ
 # Ustalenie ścieżki BASE_DIR
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Inicjalizacja środowiska django-environ
 env = environ.Env(
     DEBUG=(bool, False)
 )
-# Czytanie zmiennych środowiskowych z pliku .env
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-# Teraz możesz używać env() do odczytywania wartości
 DEBUG = env('DEBUG')
 SECRET_KEY = env('SECRET_KEY')
 
-
 ALLOWED_HOSTS = []
 
+CORS_ALLOW_HEADERS = [
+    "content-type",
+    "authorization",
+    "x-csrftoken",
+]
 
 # Application definition
 
@@ -47,7 +48,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'corsheaders',
     'api_app',
-    'django_rest_passwordreset'
+    'django_rest_passwordreset',
 ]
 
 MIDDLEWARE = [
@@ -65,7 +66,7 @@ MIDDLEWARE = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'api_app.custom_auth.CookieJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -75,20 +76,9 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '5/min',
-        'user': '20/min',
+        'anon': '10/min',
+        'user': '30/min',
     },
-}
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mydatabase',      # nazwa bazy danych
-        'USER': 'myuser',          # użytkownik bazy
-        'PASSWORD': 'mypassword',  # hasło
-        'HOST': 'localhost',       # zmień na endpoint AWS RDS, np. 'your-db-endpoint.rds.amazonaws.com'
-        'PORT': '3306',
-    }
 }
 
 ROOT_URLCONF = 'myproject.urls'
@@ -125,7 +115,7 @@ DATABASES = {
         'PORT': env('DB_PORT'),
     }
 }
-
+FRONTEND_URL = env('FRONTEND_URL')
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -173,9 +163,10 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'AUTH_HEADER_TYPES': ('Bearer',),  # nagłówek będzie 'Bearer <token>'
+    'ROTATE_REFRESH_TOKENS': True,  # Nowy refresh token po odświeżeniu
 }
 
 # CORS
@@ -206,7 +197,7 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
 JWT_AUTH_COOKIE = 'access_token'
 JWT_AUTH_REFRESH_COOKIE = 'refresh_token'
 
-SECURE_HSTS_SECONDS = 31536000  # 1 rok
+SECURE_HSTS_SECONDS = 31536000  
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 

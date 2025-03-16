@@ -8,6 +8,9 @@ ENV PYTHONUNBUFFERED=1
 # Katalog roboczy wewnątrz kontenera
 WORKDIR /app
 
+# Aktualizuj system i zainstaluj netcat-openbsd (narzędzie nc)
+RUN apt-get update && apt-get install -y netcat-openbsd
+
 # Skopiuj plik requirements.txt i zainstaluj zależności
 COPY requirements.txt /app/
 RUN pip install --upgrade pip && pip install -r requirements.txt
@@ -18,5 +21,5 @@ COPY . /app/
 # Otwórz port 8000
 EXPOSE 8000
 
-# Domyślne polecenie uruchamiające Gunicorna
-CMD ["gunicorn", "myproject.wsgi:application", "--bind", "0.0.0.0:8000"]
+# Domyślne polecenie uruchamiające migracje oraz Gunicorna
+CMD sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL...'; sleep 2; done && python manage.py migrate && gunicorn myproject.wsgi:application --bind 0.0.0.0:8000"
