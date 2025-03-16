@@ -1,3 +1,1 @@
-# Ignorowanie pliku z wrażliwymi danymi
-.env
-
+backend/.env
