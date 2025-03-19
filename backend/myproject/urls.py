@@ -1,7 +1,7 @@
 from django.urls import path, include
 from django.contrib import admin
 
-from api_app.views import CustomTokenRefreshView, IsLoggedInView, RegisterView, CustomTokenObtainPairView, ActivateAccountView,LogoutView
+from api_app.views import CustomTokenRefreshView, IsLoggedInView, RegisterView, CustomTokenObtainPairView, ActivateAccountView,LogoutView, ResendActivationView
 from api_app.views import get_csrf_token
 
 urlpatterns = [
@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/get-csrf-token/', get_csrf_token, name='get_csrf_token'),
     path('api/logout/', LogoutView.as_view(), name='logout'),
     path('api/is-logged-in/', IsLoggedInView.as_view(), name='is_logged_in'),
+    path('api/resend-activation/', ResendActivationView.as_view(), name='resend_activation'),
 ]
