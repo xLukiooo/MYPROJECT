@@ -16,6 +16,7 @@ const config = {
     passwordResetConfirm: '/auth/password_reset/confirm/',
     logout: '/logout/',
     isLoggedIn: '/is-logged-in/', // Dodajemy endpoint do sprawdzania zalogowania
+    resendActivation: '/resend-activation/', // Endpoint do ponownego wysyłania linku aktywacyjnego
   },
 };
 
@@ -140,7 +141,11 @@ export async function login(username, password) {
     });
 
     if (!response.ok) {
-      throw new Error('Błędna nazwa użytkownika lub hasło');
+      // Pobranie szczegółów błędu z odpowiedzi
+      const errorData = await response.json();
+      // Rzuć cały obiekt errorData, który powinien zawierać np.:
+      // { error: "Konto nie zostało aktywowane. Proszę aktywować konto lub wyślij ponownie link aktywacyjny.", action: "resend_activation", email: "user@example.com" }
+      throw errorData;
     }
     return await response.json();
   } catch (error) {
@@ -148,6 +153,8 @@ export async function login(username, password) {
     throw error;
   }
 }
+
+
 
 export async function resetPassword(email) {
   try {
@@ -255,5 +262,25 @@ export async function checkIsLoggedIn() {
   } catch (error) {
     console.error('Błąd sprawdzania zalogowania:', error);
     return false;
+  }
+}
+
+export async function resendActivation(username) {
+  try {
+    const csrfToken = await ensureCsrfToken();
+    const response = await apiRequest(config.endpoints.resendActivation, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ username })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Błąd przy wysyłaniu linku aktywacyjnego');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Błąd przy wysyłaniu linku aktywacyjnego:', error);
+    throw error;
   }
 }

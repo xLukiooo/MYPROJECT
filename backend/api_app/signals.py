@@ -3,8 +3,10 @@ from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db.models.signals import post_save
-from django.dispatch import receiver
+from django.dispatch import receiver, Signal
 from django_rest_passwordreset.signals import reset_password_token_created
+
+resend_activation_email = Signal()
 
 def send_custom_email(subject: str, message: str, recipient: str) -> None:
     """
@@ -25,7 +27,8 @@ def handle_reset_password(sender, instance, reset_password_token, **kwargs):
     """
     Obsługuje sygnał resetowania hasła.
     
-    Po wygenerowaniu tokena do resetowania hasła, buduje link resetowania i wysyła go na adres e-mail użytkownika.
+    Po wygenerowaniu tokena do resetowania hasła buduje link resetowania i wysyła go na adres e-mail
+    użytkownika. Adres e-mail jest pobierany automatycznie z modelu użytkownika.
     """
     reset_link = f"{settings.FRONTEND_URL}/reset-password/confirm?token={reset_password_token.key}"
     message = f"Użyj poniższego linku do resetowania hasła: {reset_link}"
@@ -36,11 +39,25 @@ def handle_activation_email(sender, instance, created, **kwargs):
     """
     Obsługuje sygnał zapisu nowego użytkownika (post_save).
     
-    Po utworzeniu nowego użytkownika generuje token aktywacyjny, buduje link aktywacyjny 
-    i wysyła wiadomość e-mail z linkiem do aktywacji konta.
+    Po utworzeniu nowego użytkownika generuje token aktywacyjny, buduje link aktywacyjny
+    i wysyła wiadomość e-mail z linkiem do aktywacji konta. Adres e-mail jest pobierany automatycznie
+    z modelu użytkownika.
     """
     if created:
         token = default_token_generator.make_token(instance)
         activation_link = f"{settings.FRONTEND_URL}/activate?uid={instance.pk}&token={token}"
         message = f"Aby aktywować konto, kliknij w poniższy link: {activation_link}"
         send_custom_email("Aktywacja konta", message, instance.email)
+
+@receiver(resend_activation_email)
+def send_activation_email_on_request(sender, user, **kwargs):
+    """
+    Odbiornik sygnału resend_activation_email.
+    
+    Generuje nowy token aktywacyjny i wysyła e-mail z linkiem aktywacyjnym.
+    Adres e-mail do wysyłki jest pobierany automatycznie z modelu użytkownika.
+    """
+    token = default_token_generator.make_token(user)
+    activation_link = f"{settings.FRONTEND_URL}/activate?uid={user.pk}&token={token}"
+    message = f"Aby aktywować konto, kliknij w poniższy link: {activation_link}"
+    send_custom_email("Aktywacja konta", message, user.email)
