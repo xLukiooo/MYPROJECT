@@ -1,5 +1,9 @@
 import React from 'react';
 
+/**
+ * Komponent ErrorBoundary do obsługi błędów w drzewie komponentów.
+ * Jeśli wystąpi błąd, wyświetla komunikat zamiast awarii całej aplikacji.
+ */
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -7,12 +11,10 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Aktualizujemy stan, aby kolejne renderowanie pokazało UI błędu
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Możesz tu wysłać logi błędów do zewnętrznego serwisu, jeśli chcesz
     console.error("ErrorBoundary caught an error", error, errorInfo);
   }
 

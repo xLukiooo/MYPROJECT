@@ -1,7 +1,12 @@
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
+
 from rest_framework import serializers
 from rest_framework.validators import UniqueValidator
+
+from .models import Category, Expense
+
+from datetime import date
 
 class RegisterSerializer(serializers.ModelSerializer):
     """
@@ -65,3 +70,41 @@ class RegisterSerializer(serializers.ModelSerializer):
         user.is_active = False
         user.save()
         return user
+
+class CategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Category
+        fields = ['id', 'name']
+
+class ExpenseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Expense
+        fields = ['id', 'category', 'amount', 'date']
+    
+    def validate_date(self, value):
+        if value > date.today():
+            raise serializers.ValidationError("Data nie może być w przyszłości.")
+        return value
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Kwota musi być większa niż 0.")
+        return value
+
+class ModeratorUserListSerializer(serializers.ModelSerializer):
+    """
+    Serializer do wyświetlania listy użytkowników dla moderatora.
+    Zawiera podstawowe pola: id, first_name, last_name, username.
+    """
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'username']
+
+class ModeratorUserDetailSerializer(serializers.ModelSerializer):
+    """
+    Serializer do wyświetlania szczegółów użytkownika dla moderatora.
+    Zawiera dodatkowo pole email.
+    """
+    class Meta:
+        model = User
+        fields = ['id', 'first_name', 'last_name', 'username', 'email']

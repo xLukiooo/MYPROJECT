@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { resetPassword } from '../api/auth';
 
+/**
+ * Komponent ResetPassword
+ *
+ * Umożliwia użytkownikowi wysłanie instrukcji resetu hasła poprzez podanie adresu email.
+ */
 function ResetPassword() {
   const [resetEmail, setResetEmail] = useState('');
   const [message, setMessage] = useState('');

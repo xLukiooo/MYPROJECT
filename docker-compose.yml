@@ -20,9 +20,12 @@ services:
   backend:
     build: ./backend
     command: >
-      sh -c "while ! nc -z db 3306; do echo 'Waiting for MySQL...'; sleep 2; done &&
-            python manage.py migrate &&
-            gunicorn myproject.wsgi:application --bind 0.0.0.0:8000 --access-logfile - --access-logformat '%(t)s \"%(r)s\" %(s)s %(b)s in %(L)s'"
+      sh -c "
+        while ! nc -z db 3306; do echo 'Waiting for MySQL...'; sleep 2; done &&
+        python manage.py makemigrations &&
+        python manage.py migrate &&
+        gunicorn myproject.wsgi:application --bind 0.0.0.0:8000 --access-logfile - --access-logformat '%(t)s \"%(r)s\" %(s)s %(b)s in %(L)s'
+      "
     volumes:
       - ./backend:/app
     ports:

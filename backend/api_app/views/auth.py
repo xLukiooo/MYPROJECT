@@ -1,8 +1,9 @@
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.http import base36_to_int
 from django.http import JsonResponse
 from django.middleware.csrf import get_token
-from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.models import User
@@ -13,8 +14,8 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from .serializers import RegisterSerializer
-from .signals import resend_activation_email
+from ..serializers import RegisterSerializer
+from ..signals import resend_activation_email
 
 @ensure_csrf_cookie
 def get_csrf_token(request):
@@ -28,6 +29,7 @@ def get_csrf_token(request):
     csrf_token = get_token(request)
     return JsonResponse({'csrftoken': csrf_token})
 
+@method_decorator(csrf_protect, name='dispatch')
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Nadpisanie domyślnego widoku JWT, aby:
@@ -74,6 +76,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
         )
         return response
 
+@method_decorator(csrf_protect, name='dispatch')
 class CustomTokenRefreshView(TokenRefreshView):
     """
     Nadpisanie domyślnego widoku odświeżania tokenu JWT.
@@ -105,6 +108,7 @@ class CustomTokenRefreshView(TokenRefreshView):
             )
         return response
 
+@method_decorator(csrf_protect, name='dispatch')
 class RegisterView(APIView):
     """
     Widok rejestracji użytkownika.
@@ -124,6 +128,7 @@ class RegisterView(APIView):
                 status=status.HTTP_201_CREATED
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class ActivateAccountView(APIView):
     """
@@ -161,6 +166,7 @@ class ActivateAccountView(APIView):
                 )
             return Response({"error": "Nieprawidłowy token."}, status=status.HTTP_400_BAD_REQUEST)
 
+@method_decorator(csrf_protect, name='dispatch')
 class LogoutView(APIView):
     """
     Widok wylogowania użytkownika przez usunięcie ciasteczek z tokenami.
@@ -189,6 +195,7 @@ class IsLoggedInView(APIView):
     def get(self, request):
         return Response({'isLoggedIn': True})
 
+@method_decorator(csrf_protect, name='dispatch')
 class ResendActivationView(APIView):
     """
     Widok umożliwiający ponowne wysłanie linku aktywacyjnego.
