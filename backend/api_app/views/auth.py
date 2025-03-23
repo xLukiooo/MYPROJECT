@@ -21,7 +21,7 @@ from ..signals import resend_activation_email
 def get_csrf_token(request):
     """
     Zwraca token CSRF w formacie JSON.
-    
+
     Funkcja zabezpiecza widok, ustawiając ciasteczko CSRF w przeglądarce użytkownika,
     a następnie zwraca token w formacie JSON. Token ten jest wykorzystywany przez front-end
     do zabezpieczenia żądań przed atakami CSRF.
@@ -33,10 +33,10 @@ def get_csrf_token(request):
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Nadpisanie domyślnego widoku JWT, aby:
-      - Najpierw sprawdzić, czy konto użytkownika jest aktywne.
+      - Sprawdzić, czy konto użytkownika jest aktywne.
       - Jeśli konto nie jest aktywne, zwrócić komunikat oraz flagę "action": "resend_activation".
       - Jeśli konto jest aktywne, przeprowadzić walidację przez serializer, pobrać użytkownika (serializer.user),
-        zaktualizować last_login, wygenerować tokeny JWT, ustawić ciasteczka i zwrócić odpowiedź.
+        zaktualizować czas ostatniego logowania, wygenerować tokeny JWT, ustawić ciasteczka i zwrócić odpowiedź.
     """
     def post(self, request, *args, **kwargs):
         username = request.data.get('username')
@@ -80,10 +80,10 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 class CustomTokenRefreshView(TokenRefreshView):
     """
     Nadpisanie domyślnego widoku odświeżania tokenu JWT.
-    
+
     Funkcja próbuje pobrać token odświeżania z ciasteczek, a następnie przekazuje go do klasy bazowej,
     która generuje nowy token dostępu (access) oraz nowy token odświeżania. Po poprawnym odświeżeniu tokenów,
-    ustawia nowe ciasteczka z tymi tokenami.
+    ustawiane są nowe ciasteczka z tymi tokenami.
     """
     def post(self, request, *args, **kwargs):
         refresh_cookie = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
@@ -112,7 +112,7 @@ class CustomTokenRefreshView(TokenRefreshView):
 class RegisterView(APIView):
     """
     Widok rejestracji użytkownika.
-    
+
     Pozwala na utworzenie nowego użytkownika. Dane wejściowe są walidowane przy pomocy serializer'a.
     W przypadku poprawnej walidacji, użytkownik jest zapisywany w bazie danych i zwracany jest identyfikator
     oraz nazwa użytkownika.
@@ -129,11 +129,10 @@ class RegisterView(APIView):
             )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 class ActivateAccountView(APIView):
     """
     Widok aktywacji konta.
-    
+
     Pobiera uid i token z parametrów zapytania. Jeśli token jest poprawny, konto zostaje aktywowane.
     W przeciwnym razie, jeśli token przekroczył ustawiony limit czasu, zwracany jest komunikat o wygaśnięciu.
     """
@@ -170,8 +169,9 @@ class ActivateAccountView(APIView):
 class LogoutView(APIView):
     """
     Widok wylogowania użytkownika przez usunięcie ciasteczek z tokenami.
-    
-    Metoda POST usuwa ciasteczka przechowujące token dostępu i token odświeżania, co powoduje wylogowanie użytkownika.
+
+    Metoda POST usuwa ciasteczka przechowujące token dostępu i token odświeżania,
+    co powoduje wylogowanie użytkownika.
     """
     def post(self, request):
         response = Response(
@@ -184,22 +184,27 @@ class LogoutView(APIView):
 
 class IsLoggedInView(APIView):
     """
-    Widok sprawdzający, czy użytkownik jest zalogowany.
-    
-    Wymaga autoryzacji (IsAuthenticated). Przed wykonaniem widoku następuje weryfikacja tokena JWT, który jest pobierany
-    z ciasteczka zgodnie z konfiguracją REST_FRAMEWORK. Jeśli token jest prawidłowy, użytkownik jest uwierzytelniony,
-    a widok zwraca odpowiedź JSON z informacją, że użytkownik jest zalogowany. W przeciwnym przypadku zwracana jest odpowiedź 401.
+    Widok sprawdzający, czy użytkownik jest zalogowany oraz czy posiada rolę moderatora.
+
+    Wymaga autoryzacji (IsAuthenticated). Przed wykonaniem widoku następuje weryfikacja tokena JWT,
+    który jest pobierany z ciasteczka zgodnie z konfiguracją REST_FRAMEWORK.
+    Jeśli token jest prawidłowy, użytkownik jest uwierzytelniony, a widok zwraca odpowiedź JSON z informacjami:
+      - 'isLoggedIn': True
+      - 'isModerator': True, jeśli użytkownik należy do grupy 'Moderator', w przeciwnym razie False.
+    W przypadku braku autoryzacji zwracany jest status 401.
     """
     permission_classes = [IsAuthenticated]
     
     def get(self, request):
-        return Response({'isLoggedIn': True})
+        user = request.user
+        is_moderator = user.groups.filter(name='Moderator').exists()
+        return Response({'isLoggedIn': True, 'isModerator': is_moderator})
 
 @method_decorator(csrf_protect, name='dispatch')
 class ResendActivationView(APIView):
     """
     Widok umożliwiający ponowne wysłanie linku aktywacyjnego.
-    
+
     Przyjmuje nazwę użytkownika, sprawdza, czy użytkownik istnieje oraz czy konto nie jest aktywne,
     a następnie wywołuje sygnał resend_activation_email, który generuje nowy token aktywacyjny i wysyła
     wiadomość e-mail. Backend automatycznie pobiera adres e-mail powiązany z kontem użytkownika.
