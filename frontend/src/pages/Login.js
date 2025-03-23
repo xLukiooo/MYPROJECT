@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, resendActivation } from '../api/auth';
+import { login, resendActivation, checkIsLoggedIn } from '../api/auth';
 import {
   Dialog,
   DialogTitle,
@@ -13,8 +13,11 @@ import {
 /**
  * Komponent Login
  *
- * Obsługuje logowanie użytkownika. Po pomyślnym logowaniu przekierowuje do panelu użytkownika.
- * W przypadku nieaktywnego konta, otwiera modal umożliwiający wysłanie ponownego linku aktywacyjnego.
+ * Obsługuje logowanie użytkownika. Po pomyślnym logowaniu wywołuje dodatkową funkcję,
+ * która sprawdza, czy użytkownik jest zalogowany oraz czy posiada rolę moderatora.
+ * Na podstawie otrzymanych danych użytkownik zostanie przekierowany do odpowiedniego panelu
+ * (moderatora lub zwykłego użytkownika). W przypadku nieaktywnego konta wyświetlany jest modal,
+ * umożliwiający wysłanie ponownego linku aktywacyjnego.
  */
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -27,8 +30,13 @@ function Login({ onLoginSuccess }) {
     e.preventDefault();
     try {
       await login(username, password);
-      onLoginSuccess();
-      navigate('/dashboard');
+      const authData = await checkIsLoggedIn();
+      onLoginSuccess(authData);
+      if (authData.isModerator) {
+        navigate('/moderator-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error) {
       if (error && error.action === "resend_activation") {
         setOpenActivationModal(true);

@@ -6,9 +6,7 @@ import { ensureCsrfToken } from './api/apiBase';
 import { checkIsLoggedIn } from './api/auth';
 import './App.css';
 
-/**
- * Lazy loading stron - pozwala ładować strony tylko wtedy, gdy są potrzebne.
- */
+// Lazy loading stron - ładuje komponenty tylko wtedy, gdy są potrzebne.
 const Home = lazy(() => import('./pages/Home'));
 const Register = lazy(() => import('./pages/Register'));
 const Login = lazy(() => import('./pages/Login'));
@@ -16,6 +14,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const ResetPasswordConfirm = lazy(() => import('./pages/ResetPasswordConfirm'));
 const ActivateAccount = lazy(() => import('./pages/ActivateAccount'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ModeratorDashboard = lazy(() => import('./pages/ModeratorDashboard')); // Nowa strona dla moderatora
 
 /**
  * Komponent PrivateRoute zabezpiecza dostęp do tras przeznaczonych dla zalogowanych użytkowników.
@@ -27,18 +26,19 @@ function PrivateRoute({ isLoggedIn, children }) {
 
 /**
  * Główny komponent aplikacji.
- * Inicjalizuje token CSRF, sprawdza czy użytkownik jest zalogowany, oraz ustawia nawigację i trasy.
+ * Inicjalizuje token CSRF, sprawdza status autoryzacji (wraz z rolą użytkownika) oraz ustawia nawigację i trasy.
  */
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Stan przechowujący informacje o zalogowaniu i roli użytkownika.
+  const [authStatus, setAuthStatus] = useState({ isLoggedIn: false, isModerator: false });
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
     async function init() {
       try {
         await ensureCsrfToken();
-        const loggedIn = await checkIsLoggedIn();
-        setIsLoggedIn(loggedIn);
+        const authData = await checkIsLoggedIn();
+        setAuthStatus(authData);
       } catch (error) {
         console.error('Błąd podczas inicjalizacji:', error);
       } finally {
@@ -58,14 +58,18 @@ function App() {
         <nav style={{ marginBottom: "20px" }}>
           <ul style={{ listStyle: "none", display: "flex", gap: "10px", padding: 0 }}>
             <li><Link to="/">Strona Główna</Link></li>
-            {!isLoggedIn && (
+            {!authStatus.isLoggedIn && (
               <>
                 <li><Link to="/register">Rejestracja</Link></li>
                 <li><Link to="/login">Logowanie</Link></li>
               </>
             )}
             <li><Link to="/reset-password">Reset Hasła</Link></li>
-            {isLoggedIn && <li><Link to="/dashboard">Panel Użytkownika</Link></li>}
+            {authStatus.isLoggedIn && (
+              authStatus.isModerator 
+                ? <li><Link to="/moderator-dashboard">Panel Moderatora</Link></li>
+                : <li><Link to="/dashboard">Panel Użytkownika</Link></li>
+            )}
           </ul>
         </nav>
         <ErrorBoundary>
@@ -73,15 +77,23 @@ function App() {
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/login" element={<Login onLoginSuccess={() => setIsLoggedIn(true)} />} />
+              <Route path="/login" element={<Login onLoginSuccess={setAuthStatus} />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/reset-password/confirm" element={<ResetPasswordConfirm />} />
               <Route path="/activate" element={<ActivateAccount />} />
               <Route 
                 path="/dashboard" 
                 element={
-                  <PrivateRoute isLoggedIn={isLoggedIn}>
+                  <PrivateRoute isLoggedIn={authStatus.isLoggedIn}>
                     <Dashboard />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
+                path="/moderator-dashboard" 
+                element={
+                  <PrivateRoute isLoggedIn={authStatus.isLoggedIn}>
+                    {authStatus.isModerator ? <ModeratorDashboard /> : <Navigate to="/dashboard" />}
                   </PrivateRoute>
                 } 
               />

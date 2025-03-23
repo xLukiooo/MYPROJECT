@@ -161,8 +161,9 @@ export async function logout() {
 }
 
 /**
- * Sprawdza, czy użytkownik jest aktualnie zalogowany.
- * @returns {Promise<boolean>} True, jeśli użytkownik jest zalogowany, w przeciwnym razie false.
+ * Sprawdza, czy użytkownik jest aktualnie zalogowany oraz czy posiada rolę moderatora.
+ * @returns {Promise<{isLoggedIn: boolean, isModerator: boolean}>} Obiekt zawierający flagę isLoggedIn (true, jeśli użytkownik jest zalogowany)
+ * oraz isModerator (true, jeśli użytkownik należy do grupy Moderator); w przeciwnym razie obie flagi będą false.
  */
 export async function checkIsLoggedIn() {
   try {
@@ -170,13 +171,16 @@ export async function checkIsLoggedIn() {
       method: 'GET',
     });
     if (!response.ok) {
-      return false;
+      return { isLoggedIn: false, isModerator: false };
     }
     const data = await response.json();
-    return data.isLoggedIn === true;
+    return {
+      isLoggedIn: data.isLoggedIn === true,
+      isModerator: data.isModerator === true,
+    };
   } catch (error) {
     console.error('Błąd sprawdzania zalogowania:', error);
-    return false;
+    return { isLoggedIn: false, isModerator: false };
   }
 }
 
