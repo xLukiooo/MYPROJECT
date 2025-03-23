@@ -8,6 +8,9 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 
+from itertools import groupby
+from operator import itemgetter
+
 from ..models import Category, Expense
 from ..serializers import CategorySerializer, ExpenseSerializer
 
@@ -38,24 +41,39 @@ class ExpenseListView(APIView):
     Wymaga autoryzacji (IsAuthenticated) oraz jest zabezpieczony przed atakami CSRF (ensure_csrf_cookie).
 
     GET:
-      - Zwraca listę wszystkich wydatków zalogowanego użytkownika, posortowaną malejąco po dacie.
-      - Pola zwracane w formacie JSON to m.in. id, category (ID kategorii), amount (kwota), date (data).
+      - Zwraca listę wydatków zalogowanego użytkownika, pogrupowaną według daty.
+      - Odpowiedź JSON zawiera listę słowników, z których każdy posiada pole "date" (data wydatków) oraz "expenses"
+        (lista wydatków z tej daty, gdzie każde wydanie zawiera pola: id, category, amount).
+      - Pole "date" nie jest powielane w obrębie listy wydatków, gdyż główna data już jest podana.
       - Zwraca status 200 (OK) w przypadku powodzenia.
 
     POST:
       - Tworzy nowy wydatek i przypisuje go do aktualnie zalogowanego użytkownika.
       - Oczekuje w treści żądania (JSON) pól: category (ID kategorii), amount (kwota), date (data).
-      - Jeśli data nie zostanie podana, ustawi dzisiejszą date zgodnie z Serializerem.
-      - Walidacja obejmuje m.in. sprawdzenie, czy kwota jest dodatnia i czy data nie jest z przyszłości.
-      - Zwraca status 201 (Created) w przypadku powodzenia lub 400 (Bad Request) w razie błędów walidacji.
+      - Jeśli data nie zostanie podana, ustawi dzisiejszą datę zgodnie z Serializerem.
+      - Walidacja obejmuje m.in. sprawdzenie, czy kwota jest dodatnia oraz czy data nie jest z przyszłości.
+      - Zwraca status 201 (Created) w przypadku powodzenia lub 400 (Bad Request) przy błędach walidacji.
     """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         expenses = Expense.objects.filter(user=request.user).order_by('-date')
         serializer = ExpenseSerializer(expenses, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        expenses_data = serializer.data
+        expenses_data = sorted(expenses_data, key=itemgetter('date'), reverse=True)
+        grouped_expenses = []
+        for date_key, items in groupby(expenses_data, key=itemgetter('date')):
+            expenses_list = []
+            for expense in items:
+                expense_copy = expense.copy()
+                expense_copy.pop('date', None)
+                expenses_list.append(expense_copy)
+            grouped_expenses.append({
+                "date": date_key,
+                "expenses": expenses_list
+            })
+
+        return Response(grouped_expenses, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = ExpenseSerializer(data=request.data)

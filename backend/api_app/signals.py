@@ -64,16 +64,13 @@ def send_activation_email_on_request(sender, user, **kwargs):
 
 @receiver(post_migrate)
 def create_groups(sender, **kwargs):
-    """
-    Obsługuje sygnał post_migrate, tworząc grupę 'Moderator' i przypisując do niej
-    uprawnienia 'view_user' oraz 'delete_user', o ile są dostępne.
-    """
-    moderator_group, created = Group.objects.get_or_create(name='Moderator')
-    try:
-        view_user = Permission.objects.get(codename='view_user')
-        delete_user = Permission.objects.get(codename='delete_user')
-        moderator_group.permissions.add(view_user, delete_user)
-        if created:
-            print("Grupa 'Moderator' została utworzona wraz z przypisaniem uprawnień.")
-    except Permission.DoesNotExist:
-        print("Uwaga: Nie znaleziono wymaganych uprawnień (view_user lub delete_user).")
+    if sender.label == 'auth':
+        moderator_group, created = Group.objects.get_or_create(name='Moderator')
+        try:
+            view_user = Permission.objects.get(codename='view_user')
+            delete_user = Permission.objects.get(codename='delete_user')
+            moderator_group.permissions.add(view_user, delete_user)
+            if created:
+                print("Grupa 'Moderator' została utworzona wraz z przypisaniem uprawnień.")
+        except Permission.DoesNotExist:
+            print("Uwaga: Nie znaleziono wymaganych uprawnień (view_user lub delete_user).")
