@@ -1,11 +1,10 @@
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group, Permission
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, post_migrate
 from django.dispatch import receiver, Signal
 from django_rest_passwordreset.signals import reset_password_token_created
-
 resend_activation_email = Signal()
 
 def send_custom_email(subject: str, message: str, recipient: str) -> None:
@@ -61,3 +60,20 @@ def send_activation_email_on_request(sender, user, **kwargs):
     activation_link = f"{settings.FRONTEND_URL}/activate?uid={user.pk}&token={token}"
     message = f"Aby aktywować konto, kliknij w poniższy link: {activation_link}"
     send_custom_email("Aktywacja konta", message, user.email)
+
+
+@receiver(post_migrate)
+def create_groups(sender, **kwargs):
+    """
+    Obsługuje sygnał post_migrate, tworząc grupę 'Moderator' i przypisując do niej
+    uprawnienia 'view_user' oraz 'delete_user', o ile są dostępne.
+    """
+    moderator_group, created = Group.objects.get_or_create(name='Moderator')
+    try:
+        view_user = Permission.objects.get(codename='view_user')
+        delete_user = Permission.objects.get(codename='delete_user')
+        moderator_group.permissions.add(view_user, delete_user)
+        if created:
+            print("Grupa 'Moderator' została utworzona wraz z przypisaniem uprawnień.")
+    except Permission.DoesNotExist:
+        print("Uwaga: Nie znaleziono wymaganych uprawnień (view_user lub delete_user).")

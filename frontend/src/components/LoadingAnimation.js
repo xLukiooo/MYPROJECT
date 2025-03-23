@@ -1,6 +1,15 @@
 import React, { useRef, useEffect } from 'react';
 import { gsap } from 'gsap';
 
+/**
+ * Komponent LoadingAnimation.
+ *
+ * Wyświetla animację ładowania z trzema pulsującymi kółkami.
+ * Animacja realizowana jest przy użyciu biblioteki gsap, która zmienia skalę oraz przezroczystość elementów.
+ *
+ * @component
+ * @returns {JSX.Element} Element reprezentujący animację ładowania.
+ */
 const LoadingAnimation = () => {
   const containerRef = useRef(null);
 

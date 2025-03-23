@@ -8,7 +8,7 @@ function Dashboard() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login'); // Po wylogowaniu przekieruj do strony logowania
+      navigate('/login'); 
     } catch (error) {
       console.error("Błąd podczas wylogowywania:", error);
     }

@@ -1,8 +1,12 @@
-// frontend/src/components/ResetPasswordConfirm.jsx
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { confirmResetPassword } from '../api/auth'; // importujemy naszą nową funkcję
+import { confirmResetPassword } from '../api/auth';
 
+/**
+ * Komponent ResetPasswordConfirm
+ *
+ * Pozwala użytkownikowi ustawić nowe hasło przy użyciu tokena resetu, który znajduje się w adresie URL.
+ */
 function ResetPasswordConfirm() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -12,7 +16,6 @@ function ResetPasswordConfirm() {
   const [token, setToken] = useState('');
 
   useEffect(() => {
-    // Wyciągamy token z URL, np. /reset-password/confirm?token=xyz
     const params = new URLSearchParams(location.search);
     const t = params.get('token');
     setToken(t || '');
@@ -30,7 +33,7 @@ function ResetPasswordConfirm() {
     try {
       await confirmResetPassword(token, newPassword);
       setMessage('Hasło zostało zmienione. Możesz się teraz zalogować.');
-      // Opcjonalnie przeniesienie np. na stronę logowania:
+      // Można przenieść użytkownika do strony logowania, np.:
       // navigate('/login');
     } catch (error) {
       setMessage(error.message);
@@ -41,9 +44,7 @@ function ResetPasswordConfirm() {
     <div>
       <h2>Ustaw nowe hasło</h2>
       {message && <p>{message}</p>}
-
       {!token && <p style={{ color: 'red' }}>Brak tokenu w adresie!</p>}
-
       <form onSubmit={handleSubmit}>
         <div>
           <label>Nowe hasło:</label><br />

@@ -2,6 +2,11 @@ import React, { useState } from 'react';
 import * as yup from 'yup';
 import { register } from '../api/auth';
 
+/**
+ * Komponent Register umożliwia użytkownikom rejestrację.
+ * Formularz jest walidowany przy użyciu biblioteki yup. Po poprawnej walidacji dane są wysyłane do API,
+ * a użytkownik otrzymuje komunikat o powodzeniu rejestracji lub informacje o błędach.
+ */
 const schema = yup.object().shape({
   firstName: yup.string().required('Imię jest wymagane.'),
   lastName: yup.string().required('Nazwisko jest wymagane.'),

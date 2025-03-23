@@ -10,6 +10,12 @@ import {
   Button
 } from '@mui/material';
 
+/**
+ * Komponent Login
+ *
+ * Obsługuje logowanie użytkownika. Po pomyślnym logowaniu przekierowuje do panelu użytkownika.
+ * W przypadku nieaktywnego konta, otwiera modal umożliwiający wysłanie ponownego linku aktywacyjnego.
+ */
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -24,7 +30,6 @@ function Login({ onLoginSuccess }) {
       onLoginSuccess();
       navigate('/dashboard');
     } catch (error) {
-      // Jeśli backend zwrócił flagę "resend_activation", otwieramy modal.
       if (error && error.action === "resend_activation") {
         setOpenActivationModal(true);
         setMessage(error.error);
@@ -36,7 +41,6 @@ function Login({ onLoginSuccess }) {
 
   const handleResendActivation = async () => {
     try {
-      // Używamy nazwę użytkownika wpisaną już w polu loginu
       await resendActivation(username);
       setMessage("Nowy link aktywacyjny został wysłany.");
       setOpenActivationModal(false);
