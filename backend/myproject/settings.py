@@ -8,6 +8,7 @@ from pathlib import Path
 from datetime import timedelta
 import environ
 
+
 """
 Określenie ścieżki bazowej projektu.
 Ta konfiguracja pozostaje bez zmian niezależnie od środowiska wdrożenia.
