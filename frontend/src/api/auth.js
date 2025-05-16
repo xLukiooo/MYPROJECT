@@ -214,19 +214,28 @@ export async function resendActivation(username) {
  * Aktywuje konto użytkownika.
  * @param {string} uid - Identyfikator użytkownika.
  * @param {string} token - Token aktywacyjny.
- * @returns {Promise<object>} Odpowiedź serwera w formie obiektu JSON.
- * @throws {Error} Jeśli aktywacja konta się nie powiedzie.
  */
 export async function activateAccount(uid, token) {
   try {
-    const response = await apiRequest(`${authEndpoints.activate}?uid=${uid}&token=${token}`, {
-      method: 'GET',
-      credentials: 'include'
+    // Pobierz CSRF-token
+    const csrfToken = await ensureCsrfToken();
+
+    const response = await apiRequest(authEndpoints.activate, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'Content-Type': 'application/json'
+      },
+      credentials: 'include',
+      body: JSON.stringify({ uid, token })
     });
+
+    const data = await response.json();
     if (!response.ok) {
-      throw new Error('Błąd aktywacji konta');
+      // rzuć błąd z komunikatem z backendu
+      throw new Error(data.error || 'Błąd aktywacji konta');
     }
-    return await response.json();
+    return data;
   } catch (error) {
     console.error('Błąd podczas aktywacji konta:', error);
     throw error;

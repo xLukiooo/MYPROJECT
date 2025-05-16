@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoadingAnimation from './components/LoadingAnimation';
 import { ensureCsrfToken } from './api/apiBase';
@@ -26,7 +26,8 @@ function PrivateRoute({ isLoggedIn, children }) {
 
 /**
  * Główny komponent aplikacji.
- * Inicjalizuje token CSRF, sprawdza status autoryzacji (wraz z rolą użytkownika) oraz ustawia nawigację i trasy.
+ * Inicjalizuje token CSRF, sprawdza status autoryzacji (wraz z rolą użytkownika) oraz ustawia routing.
+ * Nawigacja została przeniesiona do komponentu Home.
  */
 function App() {
   // Stan przechowujący informacje o zalogowaniu i roli użytkownika.
@@ -54,24 +55,7 @@ function App() {
 
   return (
     <Router>
-      <div className="App" style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
-        <nav style={{ marginBottom: "20px" }}>
-          <ul style={{ listStyle: "none", display: "flex", gap: "10px", padding: 0 }}>
-            <li><Link to="/">Strona Główna</Link></li>
-            {!authStatus.isLoggedIn && (
-              <>
-                <li><Link to="/register">Rejestracja</Link></li>
-                <li><Link to="/login">Logowanie</Link></li>
-              </>
-            )}
-            <li><Link to="/reset-password">Reset Hasła</Link></li>
-            {authStatus.isLoggedIn && (
-              authStatus.isModerator 
-                ? <li><Link to="/moderator-dashboard">Panel Moderatora</Link></li>
-                : <li><Link to="/dashboard">Panel Użytkownika</Link></li>
-            )}
-          </ul>
-        </nav>
+      <div className="App" style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
         <ErrorBoundary>
           <Suspense fallback={<LoadingAnimation />}>
             <Routes>

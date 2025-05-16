@@ -1,12 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { confirmResetPassword } from '../api/auth';
+import * as yup from 'yup';
+import {
+  Container,
+  Paper,
+  Typography,
+  TextField,
+  Button,
+  Box,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
+} from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ErrorIcon from '@mui/icons-material/Error';
 
-/**
- * Komponent ResetPasswordConfirm
- *
- * Pozwala użytkownikowi ustawić nowe hasło przy użyciu tokena resetu, który znajduje się w adresie URL.
- */
+const schema = yup.object().shape({
+  newPassword: yup
+    .string()
+    .required('Hasło jest wymagane.')
+    .min(8, 'Hasło jest za krótkie. Musi zawierać przynajmniej 8 znaków.')
+    .matches(/[A-Z]/, 'Hasło musi zawierać przynajmniej jedną wielką literę.')
+    .matches(/[a-z]/, 'Hasło musi zawierać przynajmniej jedną małą literę.')
+    .matches(/[0-9]/, 'Hasło musi zawierać przynajmniej jedną cyfrę.')
+    .matches(/[!@#$%^&*()_+]/, 'Hasło musi zawierać przynajmniej jeden znak specjalny: !@#$%^&*()_+'),
+  newPassword2: yup
+    .string()
+    .oneOf([yup.ref('newPassword'), null], 'Hasła muszą się zgadzać.')
+    .required('Potwierdzenie hasła jest wymagane.')
+});
+
 function ResetPasswordConfirm() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -14,6 +40,7 @@ function ResetPasswordConfirm() {
   const [newPassword2, setNewPassword2] = useState('');
   const [message, setMessage] = useState('');
   const [token, setToken] = useState('');
+  const [openDialog, setOpenDialog] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -25,49 +52,101 @@ function ResetPasswordConfirm() {
     e.preventDefault();
     setMessage('');
 
-    if (newPassword !== newPassword2) {
-      setMessage('Hasła nie są takie same!');
+    try {
+      await schema.validate({ newPassword, newPassword2 }, { abortEarly: false });
+    } catch (validationError) {
+      const errors = validationError.inner.map(err => err.message).join('\n');
+      setMessage(errors);
+      setOpenDialog(true);
+      return;
+    }
+
+    if (!token) {
+      setMessage('Brak tokenu w adresie!');
+      setOpenDialog(true);
       return;
     }
 
     try {
       await confirmResetPassword(token, newPassword);
       setMessage('Hasło zostało zmienione. Możesz się teraz zalogować.');
-      // Można przenieść użytkownika do strony logowania, np.:
-      // navigate('/login');
+      setOpenDialog(true);
+      setTimeout(() => {
+        navigate('/login');
+      }, 3000);
     } catch (error) {
-      setMessage(error.message);
+      setMessage(error.message || 'Błąd przy zmianie hasła.');
+      setOpenDialog(true);
     }
   };
 
+  const handleCloseDialog = () => {
+    setOpenDialog(false);
+    setMessage('');
+  };
+
+  const isSuccess = message.startsWith('Hasło zostało zmienione');
+
   return (
-    <div>
-      <h2>Ustaw nowe hasło</h2>
-      {message && <p>{message}</p>}
-      {!token && <p style={{ color: 'red' }}>Brak tokenu w adresie!</p>}
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Nowe hasło:</label><br />
-          <input
+    <Container maxWidth="sm" sx={{ mt: 8 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Typography variant="h4" component="h2" align="center" gutterBottom>
+          Ustaw nowe hasło
+        </Typography>
+        {!token && (
+          <Typography variant="body1" sx={{ color: 'red', textAlign: 'center' }}>
+            Brak tokenu w adresie!
+          </Typography>
+        )}
+        <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 2 }}>
+          <TextField
+            label="Nowe hasło"
+            variant="outlined"
             type="password"
+            fullWidth
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
-            required
+            sx={{ mb: 2 }}
           />
-        </div>
-        <div>
-          <label>Powtórz nowe hasło:</label><br />
-          <input
+          <TextField
+            label="Powtórz nowe hasło"
+            variant="outlined"
             type="password"
+            fullWidth
             value={newPassword2}
             onChange={(e) => setNewPassword2(e.target.value)}
-            required
+            sx={{ mb: 2 }}
           />
-        </div>
-        <br />
-        <button type="submit">Zapisz nowe hasło</button>
-      </form>
-    </div>
+          <Button variant="contained" color="primary" type="submit" fullWidth>
+            Zapisz nowe hasło
+          </Button>
+        </Box>
+      </Paper>
+      
+      <Dialog open={openDialog} onClose={handleCloseDialog}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {isSuccess ? (
+            <>
+              <CheckCircleIcon sx={{ color: 'green' }} />
+              Sukces
+            </>
+          ) : (
+            <>
+              <ErrorIcon sx={{ color: 'red' }} />
+              Błąd
+            </>
+          )}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ whiteSpace: 'pre-line' }}>
+            {message}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog}>OK</Button>
+        </DialogActions>
+      </Dialog>
+    </Container>
   );
 }
 

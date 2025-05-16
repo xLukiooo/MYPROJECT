@@ -11,7 +11,6 @@ from api_app.views.summary import ExpenseSummaryView
 
 # Import widoków moderatora (plik moderator.py)
 from api_app.views.moderator import (ModeratorUserListView,ModeratorUserDetailView)
-
 urlpatterns = [
     # --- Endpointy autoryzacji i rejestracji ---
     path('api/auth/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),

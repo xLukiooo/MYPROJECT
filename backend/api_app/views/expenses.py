@@ -1,5 +1,5 @@
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from django.db.models import Sum
 from django.utils import timezone
 
@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework.throttling import ScopedRateThrottle
 
 from itertools import groupby
 from operator import itemgetter
@@ -14,66 +15,54 @@ from operator import itemgetter
 from ..models import Category, Expense
 from ..serializers import CategorySerializer, ExpenseSerializer
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class CategoryListView(APIView):
     """
     Widok obsługujący listę kategorii.
 
-    Wymaga autoryzacji (IsAuthenticated) oraz jest zabezpieczony przed atakami CSRF (ensure_csrf_cookie).
-
     GET:
-      - Zwraca listę wszystkich kategorii w formacie JSON (pola: id, name).
-      - Przeznaczone wyłącznie do odczytu (READ ONLY), nie umożliwia tworzenia/edycji/usuwania kategorii.
-      - Zwraca status 200 (OK) w przypadku powodzenia.
+      - Wymaga autoryzacji (IsAuthenticated).
+      - Ustawia ciasteczko CSRF przy pierwszym żądaniu.
+      - Zwraca listę wszystkich kategorii (id, name).
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes   = [ScopedRateThrottle]
+    throttle_scope     = 'expense'
 
     def get(self, request):
         categories = Category.objects.all()
         serializer = CategorySerializer(categories, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-
 @method_decorator(csrf_protect, name='dispatch')
 class ExpenseListView(APIView):
     """
-    Widok obsługujący listę wydatków.
-
-    Wymaga autoryzacji (IsAuthenticated) oraz jest zabezpieczony przed atakami CSRF (ensure_csrf_cookie).
+    Widok obsługujący listę wydatków i tworzenie nowego wydatku.
 
     GET:
-      - Zwraca listę wydatków zalogowanego użytkownika, pogrupowaną według daty.
-      - Odpowiedź JSON zawiera listę słowników, z których każdy posiada pole "date" (data wydatków) oraz "expenses"
-        (lista wydatków z tej daty, gdzie każde wydanie zawiera pola: id, category, amount).
-      - Pole "date" nie jest powielane w obrębie listy wydatków, gdyż główna data już jest podana.
-      - Zwraca status 200 (OK) w przypadku powodzenia.
-
+      - Wymaga autoryzacji.
+      - Zwraca pogrupowane wg daty wydatki zalogowanego użytkownika.
     POST:
-      - Tworzy nowy wydatek i przypisuje go do aktualnie zalogowanego użytkownika.
-      - Oczekuje w treści żądania (JSON) pól: category (ID kategorii), amount (kwota), date (data).
-      - Jeśli data nie zostanie podana, ustawi dzisiejszą datę zgodnie z Serializerem.
-      - Walidacja obejmuje m.in. sprawdzenie, czy kwota jest dodatnia oraz czy data nie jest z przyszłości.
-      - Zwraca status 201 (Created) w przypadku powodzenia lub 400 (Bad Request) przy błędach walidacji.
+      - Wymaga autoryzacji.
+      - Tworzy nowy wydatek.
     """
     permission_classes = [IsAuthenticated]
+    throttle_classes   = [ScopedRateThrottle]
+    throttle_scope     = 'expense'
 
     def get(self, request):
         expenses = Expense.objects.filter(user=request.user).order_by('-date')
         serializer = ExpenseSerializer(expenses, many=True)
-        expenses_data = serializer.data
-        expenses_data = sorted(expenses_data, key=itemgetter('date'), reverse=True)
-        grouped_expenses = []
+        expenses_data = sorted(serializer.data, key=itemgetter('date'), reverse=True)
+        grouped = []
         for date_key, items in groupby(expenses_data, key=itemgetter('date')):
-            expenses_list = []
-            for expense in items:
-                expense_copy = expense.copy()
-                expense_copy.pop('date', None)
-                expenses_list.append(expense_copy)
-            grouped_expenses.append({
-                "date": date_key,
-                "expenses": expenses_list
-            })
-
-        return Response(grouped_expenses, status=status.HTTP_200_OK)
+            group_list = []
+            for exp in items:
+                entry = exp.copy()
+                entry.pop('date', None)
+                group_list.append(entry)
+            grouped.append({'date': date_key, 'expenses': group_list})
+        return Response(grouped, status=status.HTTP_200_OK)
 
     def post(self, request):
         serializer = ExpenseSerializer(data=request.data)
@@ -82,32 +71,23 @@ class ExpenseListView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
 @method_decorator(csrf_protect, name='dispatch')
 class ExpenseDetailView(APIView):
     """
-    Widok obsługujący pojedynczy wydatek.
-
-    Wymaga autoryzacji (IsAuthenticated) oraz jest zabezpieczony przed atakami CSRF (ensure_csrf_cookie).
+    Widok obsługujący szczegóły, edycję i usuwanie wydatku.
 
     GET:
-      - Zwraca szczegóły wybranego wydatku (m.in. id, category, amount, date),
-        o ile należy on do zalogowanego użytkownika.
-      - Zwraca status 200 (OK) w przypadku powodzenia lub 404 (Not Found), jeśli wydatek nie istnieje.
-
+      - Wymaga autoryzacji.
     PUT:
-      - Aktualizuje wydatek częściowo (partial=True), na podstawie przesłanych pól w formacie JSON.
-      - Pola możliwe do aktualizacji to m.in. category (ID), amount (kwota), date (data).
-      - Walidacja obejmuje m.in. sprawdzenie, czy kwota jest dodatnia i czy data nie jest z przyszłości.
-      - Zwraca status 200 (OK) w przypadku powodzenia lub 400 (Bad Request) w razie błędów walidacji,
-        oraz 404 (Not Found), jeśli wydatek nie istnieje.
-
+      - Wymaga autoryzacji.
+      - Aktualizuje wydatek częściowo.
     DELETE:
-      - Usuwa wydatek, jeśli należy on do zalogowanego użytkownika.
-      - Zwraca status 204 (No Content) w przypadku powodzenia lub 404 (Not Found), jeśli wydatek nie istnieje.
+      - Wymaga autoryzacji.
+      - Usuwa wydatek.
     """
-
     permission_classes = [IsAuthenticated]
+    throttle_classes   = [ScopedRateThrottle]
+    throttle_scope     = 'expense'
 
     def get_object(self, pk, user):
         try:
@@ -116,26 +96,25 @@ class ExpenseDetailView(APIView):
             return None
 
     def get(self, request, pk):
-        expense = self.get_object(pk, request.user)
-        if not expense:
-            return Response({"error": "Nie znaleziono wydatku."}, status=status.HTTP_404_NOT_FOUND)
-        serializer = ExpenseSerializer(expense)
+        exp = self.get_object(pk, request.user)
+        if not exp:
+            return Response({'error': 'Nie znaleziono wydatku.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ExpenseSerializer(exp)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     def put(self, request, pk):
-        expense = self.get_object(pk, request.user)
-        if not expense:
-            return Response({"error": "Nie znaleziono wydatku."}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = ExpenseSerializer(expense, data=request.data, partial=True)
+        exp = self.get_object(pk, request.user)
+        if not exp:
+            return Response({'error': 'Nie znaleziono wydatku.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = ExpenseSerializer(exp, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
-        expense = self.get_object(pk, request.user)
-        if not expense:
-            return Response({"error": "Nie znaleziono wydatku."}, status=status.HTTP_404_NOT_FOUND)
-        expense.delete()
+        exp = self.get_object(pk, request.user)
+        if not exp:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        exp.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

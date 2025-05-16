@@ -22,7 +22,10 @@
     "styled-components": "^6.1.15",
     "tippy.js": "^6.3.7",
     "web-vitals": "^2.1.4",
-    "yup": "^1.6.1"
+    "yup": "^1.6.1",
+    "@mui/icons-material": "^7.0.1",
+    "@mui/material": "^7.0.1",
+    "@mui/x-charts":"8.1.0"
   },
   "scripts": {
     "start": "react-scripts start",

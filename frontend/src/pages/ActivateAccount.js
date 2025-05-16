@@ -1,14 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { activateAccount } from '../api/auth';
+import { Container, Paper, Typography, Box } from '@mui/material';
 
-/**
- * Komponent ActivateAccount
- *
- * Umożliwia aktywację konta użytkownika poprzez pobranie parametrów uid i token z URL.
- * Po wywołaniu funkcji activateAccount, wyświetla komunikat o wyniku aktywacji
- * oraz przekierowuje użytkownika do strony logowania po 3 sekundach.
- */
 function ActivateAccount() {
   const [message, setMessage] = useState('');
   const location = useLocation();
@@ -36,10 +30,18 @@ function ActivateAccount() {
   }, [location.search, navigate]);
 
   return (
-    <div>
-      <h2>Aktywacja konta</h2>
-      <p>{message}</p>
-    </div>
+    <Container maxWidth="sm" sx={{ mt: 8 }}>
+      <Paper elevation={3} sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h4" component="h1" gutterBottom>
+          Aktywacja konta
+        </Typography>
+        <Box>
+          <Typography variant="body1">
+            {message}
+          </Typography>
+        </Box>
+      </Paper>
+    </Container>
   );
 }
 

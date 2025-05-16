@@ -91,13 +91,16 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '10/min',
-        'user': '30/min',
-    },
+        'anon':         '20/min',
+        'user':         '1000/day',
+        'moderator':    '200/day',
+        'login':        '10/min',
+        'registration': '5/min',
+        'expense':      '60/min',
+    }
 }
 
 """
@@ -223,7 +226,7 @@ W produkcji ustaw SESSION_COOKIE_SECURE oraz CSRF_COOKIE_SECURE na True (wymagan
 SESSION_COOKIE_SECURE = False  # Zmień na True w produkcji (HTTPS)
 CSRF_COOKIE_SECURE = False     # Zmień na True w produkcji (HTTPS)
 SESSION_COOKIE_HTTPONLY = True
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False
 # Opcjonalnie: SESSION_COOKIE_SAMESITE można ustawić na 'Lax' lub 'Strict' w zależności od wymagań
 
 """

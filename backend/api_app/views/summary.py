@@ -1,13 +1,17 @@
 from django.db.models import Sum
 from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
+from rest_framework.throttling import ScopedRateThrottle
 
 from ..models import Expense
 
+@method_decorator(ensure_csrf_cookie, name='get')
 class ExpenseSummaryView(APIView):
     """
     Widok podsumowania wydatków.
@@ -22,8 +26,9 @@ class ExpenseSummaryView(APIView):
           - 'total': łączna kwota wydatków w tej kategorii (jako string).
       - Zwraca status 200 (OK) w przypadku powodzenia.
     """
-
     permission_classes = [IsAuthenticated]
+    throttle_classes   = [ScopedRateThrottle]
+    throttle_scope     = 'expense'
 
     def get(self, request):
         today = timezone.now().date()
