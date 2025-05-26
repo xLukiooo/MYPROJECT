@@ -10,4 +10,37 @@ GRANT SELECT, INSERT, UPDATE, DELETE
   ON fintrackbd.*
   TO 'fintrack_user'@'%';
 
+-- Revoke unnecessary privileges
+REVOKE INSERT, UPDATE, DELETE
+    ON fintrackbd.api_app_category
+    TO 'fintrack_user'@'%';
+
+REVOKE SELECT, INSERT, UPDATE, DELETE
+    ON fintrackbd.django_content_type
+    TO 'fintrack_user'@'%';
+
+REVOKE SELECT, INSERT, UPDATE, DELETE
+    ON fintrackbd.django_migrations
+    TO 'fintrack_user'@'%';
+
+REVOKE SELECT, INSERT, UPDATE, DELETE
+    ON fintrackbd.django_admin_log
+    TO 'fintrack_user'@'%';
+
+REVOKE INSERT, UPDATE, DELETE
+    ON fintrackbd.auth_user_groups
+    TO 'fintrack_user'@'%';
+
+REVOKE INSERT, UPDATE, DELETE
+    ON fintrackbd.auth_permission
+    TO 'fintrack_user'@'%';
+
+REVOKE INSERT, UPDATE, DELETE
+    ON fintrackbd.auth_group_permissions
+    TO 'fintrack_user'@'%';
+
+REVOKE SELECT, UPDATE, DELETE
+    ON fintrackbd.auth_user
+    TO 'fintrack_user'@'%';
+
 FLUSH PRIVILEGES;
