@@ -63,6 +63,34 @@ services:
         "--access-logformat", "%(t)s \"%(r)s\" %(s)s %(b)s in %(L)s"
       ]
 
+  granter:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+    volumes:
+      - ./mysql/grant-privileges.sql:/grant-privileges.sql:ro
+    depends_on:
+      - backend
+      - db
+      - migrator
+    command:
+      - sh
+      - -c
+      - |
+        echo '==> Czekam aż DB będzie gotowa...' &&
+        until mysql -h db -u root -p"${MYSQL_ROOT_PASSWORD}" -e "SELECT 1"; do
+          echo "==> DB jeszcze nie jest gotowa..."
+          sleep 3
+        done &&
+        echo '==> Czekam aż tabele zostaną utworzone...' &&
+        until mysql -h db -u root -p"${MYSQL_ROOT_PASSWORD}" -e "USE fintrackbd; SHOW TABLES;" | grep -q "."; do
+          echo "==> Tabele nie są jeszcze utworzone..."
+          sleep 5
+        done &&
+        echo '==> Wykonuję grant-privileges.sql...' &&
+        mysql -h db -u root -p"${MYSQL_ROOT_PASSWORD}" < /grant-privileges.sql &&
+        echo '==> Uprawnienia zostały przyznane.'
+
   frontend:
     build: ./frontend
     ports:
