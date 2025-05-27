@@ -1,5 +1,10 @@
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+
+User = get_user_model()
 
 class Category(models.Model):
     """
@@ -8,18 +13,21 @@ class Category(models.Model):
     Atrybuty:
     - name: Nazwa kategorii (maks. 100 znaków), unikalna.
     """
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(
+        max_length=100,
+        unique=True,
+        validators=[
+            MinValueValidator(1, message="Nazwa nie może być pusta."),
+        ]
+    )
 
     def __str__(self):
-        """
-        Zwraca reprezentację tekstową kategorii.
-        """
         return self.name
+
 
 class Expense(models.Model):
     """
     Reprezentuje pojedynczy wydatek użytkownika.
-
     Atrybuty:
     - user: Użytkownik, do którego należy wydatek.
     - category: Kategoria wydatku; przy usunięciu kategorii ustawiana na NULL.
@@ -37,11 +45,27 @@ class Expense(models.Model):
         null=True,
         related_name='expenses'
     )
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[
+            MinValueValidator(0.01, message="Kwota musi być większa niż 0."),
+        ]
+    )
     date = models.DateField()
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(check=models.Q(amount__gt=0), name='expense_amount_positive'),
+            models.CheckConstraint(check=models.Q(date__lte=timezone.now().date()), name='expense_date_not_future'),
+        ]
+
+    def clean(self):
+        """
+        Dodatkowa walidacja modelu.
+        """
+        if self.date > timezone.localdate():
+            raise ValidationError({'date': "Data nie może być w przyszłości."})
+
     def __str__(self):
-        """
-        Zwraca reprezentację tekstową wydatku w formacie 'kwota - data'.
-        """
         return f"{self.amount} - {self.date}"

@@ -52,11 +52,30 @@ const expenseSchema = yup.object().shape({
     .number()
     .typeError('Kwota musi być liczbą')
     .positive('Niepoprawna kwota')
-    .required('Kwota jest wymagana'),
+    .required('Kwota jest wymagana')
+    .test(
+      'two-decimal-places',
+      'Kwota może mieć maksymalnie dwie cyfry po przecinku',
+      value => {
+        if (value === undefined || value === null) return true;
+        // Sprawdź, czy liczba ma maksymalnie dwie cyfry po przecinku
+        return /^\d+(\.\d{1,2})?$/.test(value.toString());
+      }
+    ),
   date: yup
     .date()
     .typeError('Nieprawidłowa data')
     .required('Wybierz datę')
+    .test(
+      'year-length',
+      'Rok w dacie nie może być dłuższy niż 4 cyfry',
+      value => {
+        if (value === undefined || value === null) return true;
+        // Sprawdź długość roku bezpośrednio z obiektu Date
+        const year = value.getFullYear();
+        return year.toString().length <= 4;
+      }
+    )
 });
 
 export default function Dashboard() {
@@ -101,7 +120,31 @@ export default function Dashboard() {
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
-    setCurrentExpense(prev => ({ ...prev, [name]: value }));
+
+    if (name === 'amount') {
+      // Pozwól na wprowadzenie tylko liczb i maksymalnie dwóch miejsc po przecinku
+      const regex = /^\d*\.?\d{0,2}$/;
+      if (value === '' || regex.test(value)) {
+        setCurrentExpense(prev => ({ ...prev, [name]: value }));
+      }
+    } else if (name === 'date') {
+      // Walidacja roku podczas wpisywania
+      // Sprawdź, czy wartość jest w formacie daty (np. RRRR-MM-DD)
+      // i czy rok nie przekracza 4 cyfr.
+      // Dopuszczaj puste pole i częściowe wprowadzanie daty (np. '202')
+      if (value === '') {
+        setCurrentExpense(prev => ({ ...prev, [name]: value }));
+      } else {
+        const parts = value.split('-');
+        if (parts.length > 0 && parts[0].length > 4) {
+          // Nie aktualizuj stanu, jeśli rok jest dłuższy niż 4 cyfry
+          return;
+        }
+        setCurrentExpense(prev => ({ ...prev, [name]: value }));
+      }
+    } else {
+      setCurrentExpense(prev => ({ ...prev, [name]: value }));
+    }
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -133,13 +176,20 @@ export default function Dashboard() {
 
   const deleteExpenseConfirmed = async () => {
     setConfirmDialogOpen(false);
-    try { await deleteExpense(deleteId); fetchAll(); } 
+    try { await deleteExpense(deleteId); fetchAll(); }
     catch { showError('Błąd usuwania'); }
   };
 
+  // Zmodyfikowana funkcja openNewDialog
   const openNewDialog = () => {
     setIsEditMode(false);
-    setCurrentExpense({ id: null, category: '', amount: '', date: '' });
+    setCurrentExpense({
+      id: null,
+      // Ustaw category na ID pierwszej dostępnej kategorii, jeśli lista kategorii nie jest pusta
+      category: categories.length > 0 ? categories[0].id : '',
+      amount: '',
+      date: ''
+    });
     setFormErrors({});
     setDialogOpen(true);
   };
